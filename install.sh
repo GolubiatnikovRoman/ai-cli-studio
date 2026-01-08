@@ -1,21 +1,19 @@
 #!/bin/bash
+set -euo pipefail
 
-# Определяем путь скрипта
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Проверка наличия библиотек
-if [ ! -f "$ROOT_DIR/lib/ui.sh" ] || [ ! -f "$ROOT_DIR/lib/logic.sh" ]; then
+if [[ ! -f "$ROOT_DIR/lib/ui.sh" || ! -f "$ROOT_DIR/lib/logic.sh" ]]; then
     echo "Error: Libraries not found in $ROOT_DIR/lib"
     exit 1
 fi
 
-# Импорт
 source "$ROOT_DIR/lib/ui.sh"
 source "$ROOT_DIR/lib/logic.sh"
 
 main() {
     ui_banner
-    
+
     sys_check_node
     echo ""
 

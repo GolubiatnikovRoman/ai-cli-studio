@@ -1,54 +1,50 @@
 #!/bin/bash
+set -euo pipefail
 
-SUDO=""; [ "$EUID" -ne 0 ] && SUDO="sudo"
+SUDO=""
+[[ "$EUID" -ne 0 ]] && SUDO="sudo"
 
 sys_check_node() {
-    msg_start "Проверка окружения (Node.js)"
+    msg_start "Проверка Node.js"
+
     if command -v node >/dev/null 2>&1; then
-        VER=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-        if [ "$VER" -ge 20 ]; then
-            msg_ok "Node.js v$VER ок"
+        VER=$(node -v | sed 's/v//' | cut -d. -f1)
+        if [[ "$VER" -ge 20 ]]; then
+            msg_ok
             return
         fi
     fi
-    # Тихая установка
-    curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash - >/dev/null 2>&1
-    $SUDO apt-get install -y nodejs >/dev/null 2>&1
-    msg_ok "Node.js обновлен до LTS"
+
+    msg_ok
+    msg_start "Установка Node.js 20"
+
+    curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash -
+    $SUDO apt-get install -y nodejs
+
+    msg_ok
 }
 
 sys_install_tool() {
-    NAME=$1
-    PKG=$2
-    CMD=$3
-    DIR="/opt/$CMD"
+    local NAME="$1"
+    local PKG="$2"
+    local CMD="$3"
+    local DIR="/opt/$CMD"
+    local BIN="$DIR/node_modules/.bin/$CMD"
 
     msg_start "Установка $NAME"
 
-    # 1. Очистка
-    $SUDO rm -rf "$DIR" 2>/dev/null
-    if ! $SUDO mkdir -p "$DIR"; then
-        msg_err "Нет прав на создание $DIR"
+    $SUDO rm -rf "$DIR"
+    $SUDO mkdir -p "$DIR"
+    $SUDO chown -R "$USER":"$USER" "$DIR"
+
+    npm install "$PKG" --prefix "$DIR" --silent
+
+    if [[ ! -x "$BIN" ]]; then
+        msg_err "Бинарник $CMD не найден в node_modules/.bin"
     fi
 
-    # 2. Установка
-    if ! $SUDO npm install -g --prefix "$DIR" "$PKG" --loglevel=error >/dev/null 2>&1; then
-        msg_err "Ошибка npm install"
-    fi
+    $SUDO ln -sf "$BIN" "/usr/local/bin/$CMD"
 
-    # 3. Поиск бинарника (FIX: рекурсивный поиск)
-    TARGET=$(find "$DIR" -type f -name "$CMD" 2>/dev/null | head -n 1)
-    
-    # Fallback: любой файл в bin, если по имени не нашли
-    if [ -z "$TARGET" ]; then
-        TARGET=$(find "$DIR/bin" -type f 2>/dev/null | head -n 1)
-    fi
-
-    if [ -f "$TARGET" ] && [ -n "$TARGET" ]; then
-        $SUDO chmod +x "$TARGET"
-        $SUDO ln -sf "$TARGET" "/usr/local/bin/$CMD"
-        msg_ok "$NAME готов"
-    else
-        msg_err "Бинарник не найден в $DIR"
-    fi
+    msg_ok
 }
+
