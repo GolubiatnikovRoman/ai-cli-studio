@@ -10,6 +10,10 @@ SUDO=""
 # =========================================================
 CLI_IDS=(koda qwen gemini)
 
+declare -A CLI_NAME
+declare -A CLI_PKG
+declare -A CLI_CMD
+
 CLI_NAME[koda]="Koda CLI"
 CLI_NAME[qwen]="Qwen CLI"
 CLI_NAME[gemini]="Gemini CLI"
