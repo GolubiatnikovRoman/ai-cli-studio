@@ -6,13 +6,13 @@ SUDO=""
 [[ "$EUID" -ne 0 ]] && SUDO="sudo"
 
 # =========================================================
-# CLI
+# CLI — описание доступных инструментов
 # =========================================================
 CLI_IDS=(koda qwen gemini)
 
-declare -A CLI_NAME
-declare -A CLI_PKG
-declare -A CLI_CMD
+declare -A CLI_NAME   # Человекочитаемое имя
+declare -A CLI_PKG    # npm-пакет
+declare -A CLI_CMD    # Имя бинарника
 
 CLI_NAME[koda]="Koda CLI"
 CLI_NAME[qwen]="Qwen CLI"
@@ -27,22 +27,62 @@ CLI_CMD[qwen]="qwen"
 CLI_CMD[gemini]="gemini"
 
 # =========================================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# DETECT OS — определение дистрибутива и пакетного менеджера
+# =========================================================
+OS_ID=""
+PKG_MGR=""
+
+sys_detect_os() {
+    # /etc/os-release — стандартный источник информации о дистрибутиве
+    [[ -f /etc/os-release ]] || msg_err "Не удалось определить ОС"
+
+    # shellcheck disable=SC1091
+    . /etc/os-release
+
+    OS_ID="$ID"
+
+    case "$ID" in
+        ubuntu|debian)
+            PKG_MGR="apt"
+            ;;
+        fedora|rhel|centos|almalinux|rocky)
+            PKG_MGR="dnf"
+            ;;
+        *)
+            msg_err "Дистрибутив не поддерживается: $ID"
+            ;;
+    esac
+}
+
+# =========================================================
+# UTILS — общие вспомогательные функции
 # =========================================================
 
-# Проверка: установлена ли CLI
+# Проверяет, доступна ли команда в PATH
 cli_is_installed() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# =========================================================
-# NODE.JS
-# =========================================================
+# Унифицированная установка системных пакетов
+sys_install_pkgs() {
+    case "$PKG_MGR" in
+        apt)
+            $SUDO apt-get update -y
+            $SUDO apt-get install -y "$@"
+            ;;
+        dnf)
+            $SUDO dnf install -y "$@"
+            ;;
+    esac
+}
 
-# Проверка версии Node.js и установка версии 20
+# =========================================================
+# NODE.JS — проверка и установка Node.js >= 20
+# =========================================================
 sys_check_node() {
     msg_start "Проверка Node.js"
 
+    # Если Node.js уже установлен и версия подходит — ничего не делаем
     if command -v node >/dev/null 2>&1; then
         VER=$(node -v | sed 's/v//' | cut -d. -f1)
         if [[ "$VER" -ge 20 ]]; then
@@ -54,17 +94,19 @@ sys_check_node() {
     msg_ok
     msg_start "Установка Node.js 20"
 
-    curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash -
-    $SUDO apt-get install -y nodejs
+    # NodeSource сам определяет deb / rpm
+    curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash - 2>/dev/null || \
+    curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO bash -
+
+    # Установка nodejs через пакетный менеджер
+    sys_install_pkgs nodejs
 
     msg_ok
 }
 
 # =========================================================
-# УСТАНОВКА CLI
+# INSTALL CLI — установка выбранных инструментов в /opt
 # =========================================================
-
-# Установка выбранной CLI в изолированную директорию /opt
 sys_install_tool() {
     local id="$1"
     local NAME="${CLI_NAME[$id]}"
@@ -73,7 +115,7 @@ sys_install_tool() {
     local DIR="/opt/$CMD"
     local BIN="$DIR/node_modules/.bin/$CMD"
 
-    # Если CLI уже установлена — пропускаем
+    # Если CLI уже доступна в системе — пропускаем
     if cli_is_installed "$CMD"; then
         msg_ok "$NAME уже установлен — пропуск"
         return
@@ -81,17 +123,17 @@ sys_install_tool() {
 
     msg_start "Установка $NAME"
 
-    # Создание директории установки
+    # Создаём изолированную директорию в /opt
     $SUDO mkdir -p "$DIR"
     $SUDO chown -R "$USER":"$USER" "$DIR"
 
-    # Установка npm-пакета
+    # Установка npm-пакета локально
     npm install "$PKG" --prefix "$DIR" --silent
 
-    # Проверка наличия бинарника
+    # Проверяем наличие бинарника
     [[ -x "$BIN" ]] || msg_err "Бинарник $CMD не найден"
 
-    # Симлинк в /usr/local/bin
+    # Делаем CLI доступной глобально
     $SUDO ln -sf "$BIN" "/usr/local/bin/$CMD"
 
     msg_ok
