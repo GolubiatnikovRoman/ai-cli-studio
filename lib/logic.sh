@@ -8,7 +8,7 @@ SUDO=""
 # =========================================================
 # CLI — описание доступных инструментов
 # =========================================================
-CLI_IDS=(koda qwen gemini)
+CLI_IDS=(koda qwen gemini codex)
 
 declare -A CLI_NAME   # Человекочитаемое имя
 declare -A CLI_PKG    # npm-пакет
@@ -17,14 +17,17 @@ declare -A CLI_CMD    # Имя бинарника
 CLI_NAME[koda]="Koda CLI"
 CLI_NAME[qwen]="Qwen CLI"
 CLI_NAME[gemini]="Gemini CLI"
+CLI_NAME[codex]="Codex CLI"
 
 CLI_PKG[koda]="@kodadev/koda-cli"
 CLI_PKG[qwen]="@qwen-code/qwen-code"
 CLI_PKG[gemini]="@google/gemini-cli"
+CLI_PKG[codex]="@openai/codex"
 
 CLI_CMD[koda]="koda"
 CLI_CMD[qwen]="qwen"
 CLI_CMD[gemini]="gemini"
+CLI_CMD[codex]="codex"
 
 # =========================================================
 # DETECT OS — определение дистрибутива и пакетного менеджера

@@ -10,6 +10,7 @@
 | **Koda CLI** | Github AI Agent | `/opt/koda` |
 | **Qwen CLI** | Qwen Coder (Alibaba) | `/opt/qwen` |
 | **Gemini CLI** | Google Gemini Studio | `/opt/gemini` |
+| **Codex CLI** | OpenAI Codex | `/opt/codex` |
 
 ## 🚀 Как запустить
 
